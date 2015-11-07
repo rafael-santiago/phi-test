@@ -130,9 +130,8 @@ func DoPhiTest(buffer string) []string {
     }
 
     phi_input := 0
-    for _, b := range buffer {
-        f := phi_alpha[string(b)]
-        phi_input += f
+    for _, f := range phi_alpha {
+        phi_input += (f*(f-1))
     }
 
     var nearest float64 = -1
