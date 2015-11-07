@@ -28,6 +28,69 @@ func GetBufferFromFile(filepath string) (string, error) {
     return string(retval), err
 }
 
+func NormalizeBuffer(buffer string) string {
+    //  WARN(Santiago): Unicode sucks as hell... I am sleepy and by now just jumping out this corral.
+    //                  "maybe tomorrow... it is such a shame to waste your time away like this." :)
+    var ascii []byte
+    if len(buffer) < 2048 {
+        ascii = []byte(strings.ToUpper(buffer))
+    } else {
+        ascii = []byte(strings.ToUpper(buffer[:2048]))
+    }
+    retval := ""
+    for _, a := range ascii {
+        switch (a) {
+            case 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5,
+                 0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5:
+                retval += "A"
+                break
+
+            case 0xc8, 0xc9, 0xca, 0xcb,
+                 0xe8, 0xe9, 0xea, 0xeb:
+                retval += "E"
+                break
+
+            case 0xcc, 0xcd, 0xce, 0xcf,
+                 0xec, 0xed, 0xee, 0xef:
+                retval += "I"
+                break
+
+            case 0xd2, 0xd3, 0xd4, 0xd5, 0xd6,
+                 0xf2, 0xf3, 0xf4, 0xf5, 0xf6:
+                retval += "O"
+                break
+
+            case 0xd9, 0xda, 0xdb, 0xdc,
+                 0xf9, 0xfa, 0xfb, 0xfc:
+                retval += "U"
+                break
+
+            case 0xdd,
+                 0xfd,
+                 0x9f:
+                retval += "Y"
+                break
+
+            case 0xc7,
+                 0xe7:
+                retval += "C"
+                break
+
+            case 0xd1,
+                 0xf1:
+                retval += "N"
+                break
+
+            default:
+                if a >= 'A' && a <= 'Z' {
+                    retval += string(a)
+                }
+                break
+        }
+    }
+    return retval
+}
+
 func GetOption(option, stdvalue string) string {
     for _, arg := range os.Args {
         if strings.HasPrefix(arg, "--" + option + "=") {
@@ -72,11 +135,11 @@ func DoPhiTest(buffer string) []string {
         phi_input += f
     }
 
-    var nearest float64 = float64(phi_input)
+    var nearest float64 = -1
 
     for _, kc := range K {
         kc.delta = math.Abs(kc.phi - float64(phi_input))
-        if nearest > kc.delta {
+        if nearest == -1 || nearest > kc.delta {
             nearest = kc.delta
         }
     }
@@ -112,6 +175,5 @@ func main() {
         fmt.Println("duh: No buffer to guess about.")
         os.Exit(1)
     }
-    fmt.Println("Text language: ", DoPhiTest(buffer))
+    fmt.Println("Text language: ", DoPhiTest(NormalizeBuffer(buffer)))
 }
-
