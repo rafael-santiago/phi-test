@@ -103,7 +103,7 @@ func GetOption(option, stdvalue string) string {
     return stdvalue
 }
 
-func DoPhiTest(buffer string) []string {
+func DoPhiTest(buffer string, languages map[string]bool, show_delta bool) []string {
 
     if len(buffer) == 0 {
         return make([]string,0)
@@ -112,10 +112,22 @@ func DoPhiTest(buffer string) []string {
     var K map[string]*KappaCtx
     K = make(map[string]*KappaCtx)
     K["Random"] = &KappaCtx{0.0385, 0, 0}
-    K["Portuguese"] = &KappaCtx{0.0781, 0, 0}
-    K["French"] = &KappaCtx{0.0778, 0, 0}
-    K["Spanish"] = &KappaCtx{0.0775, 0, 0}
-    K["English"] = &KappaCtx{0.0667, 0, 0}
+    if _, included := languages["portuguese"]; included {
+        K["Portuguese"] = &KappaCtx{0.0781, 0, 0}
+    }
+    if _, included := languages["french"]; included {
+        K["French"] = &KappaCtx{0.0778, 0, 0}
+    }
+    if _, included := languages["spanish"]; included {
+        K["Spanish"] = &KappaCtx{0.0775, 0, 0}
+    }
+    if _, included := languages["english"]; included {
+        K["English"] = &KappaCtx{0.0667, 0, 0}
+    }
+    if len(K) == 1 {
+        fmt.Println("duh: Unkown language supplied.")
+        os.Exit(1)
+    }
 
     l := len(buffer)
 
@@ -136,11 +148,22 @@ func DoPhiTest(buffer string) []string {
 
     var nearest float64 = -1
 
-    for _, kc := range K {
+    if show_delta {
+        fmt.Println("Deltas\n___")
+    }
+
+    for x, kc := range K {
         kc.delta = math.Abs(kc.phi - float64(phi_input))
+        if show_delta {
+            fmt.Println(x, kc.delta)
+        }
         if nearest == -1 || nearest > kc.delta {
             nearest = kc.delta
         }
+    }
+
+    if show_delta {
+        fmt.Println("___")
     }
 
     var retval []string
@@ -157,11 +180,22 @@ func DoPhiTest(buffer string) []string {
 
 func main() {
     if GetOption("help", "0") == "1" {
-        fmt.Println("usage: phi-test --from-file=<filepath>|--buffer=<buffer>")
+        fmt.Println("usage: phi-test --language=<english,portuguese,spanish,french> --from-file=<filepath>|--buffer=<buffer> [--show-deltas]")
         os.Exit(1)
     }
     var buffer string
     var err error
+    var languages map[string]bool
+    languages = make(map[string]bool)
+    if option := GetOption("language", ""); option != "" {
+        temp := strings.Split(strings.ToLower(option), ",")
+        for _, temp := range temp {
+            languages[temp] = true
+        }
+    } else {
+        fmt.Println("duh: Specify at least one language.")
+        os.Exit(1)
+    }
     if option := GetOption("buffer", ""); option != "" {
         buffer = option
     } else if option := GetOption("from-file", ""); option != "" {
@@ -174,5 +208,5 @@ func main() {
         fmt.Println("duh: No buffer to guess about.")
         os.Exit(1)
     }
-    fmt.Println("Text language: ", DoPhiTest(NormalizeBuffer(buffer)))
+    fmt.Println("Text language: ", DoPhiTest(NormalizeBuffer(buffer), languages, GetOption("show-deltas", "0") == "1"))
 }
